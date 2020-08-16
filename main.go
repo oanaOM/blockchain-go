@@ -1,22 +1,28 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	"github.com/joho/godotenv"
 	"github.com/oanaOM/blockchain-go/ledger"
 )
 
 func main() {
-	c := ledger.Ledger{}
+	err := godotenv.Load()
 
-	for x := range []int{1, 2, 4, 5,7,8,9} {
-		hashString := fmt.Sprintf("%v", x)
-		c.Add(hashString)
-
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	b, err := c.Get("3")
+	go func() {
+		t := time.Now()
+		genesisBlock := ledger.Block{Index: 0, Timestamp: t.String(), BPM: 0, Hash: "", PreviousHash: ""}
+		spew.Dump(genesisBlock)
+		ledger.Blockchain = append(ledger.Blockchain, genesisBlock)
 
-	fmt.Printf("block [%v]: %v, %v\n", 3, b, err)
+	}()
 
+	log.Fatal(ledger.Run())
 }

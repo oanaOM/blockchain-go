@@ -2,48 +2,65 @@
 package ledger
 
 import (
-	"errors"
+	"crypto/sha256"
+	"encoding/hex"
+	"time"
 )
 
-//Ledger represents the blockchain
-type Ledger struct {
-	Genesis *Block
+// Blockchain initialise a blockchain
+var Blockchain []Block
+
+//calculateHash creates a HASH256 string has of a block
+func calculateHash(b Block) string {
+	record := string(b.Index) + b.Timestamp + string(b.BPM) + b.PreviousHash
+
+	h := sha256.New()
+
+	h.Write([]byte(record))
+
+	hashed := h.Sum(nil)
+
+	return hex.EncodeToString(hashed)
 }
 
-//Add adds blocks on the chain and returns his index
-func (l *Ledger) Add(h string) string {
-	if l.Genesis == nil {
-		l.Genesis = &Block{Hash: h, Next: nil, Previous: nil}
-		return h
-	}
-	block := l.Genesis
+//CreateBlock will create a new block
+func CreateBlock(b Block, bpm int) (Block, error) {
 
-	for block.Next != nil {
-		block = block.Next
-	}
+	var newB Block
 
-	//we add the block to the end of the list
-	block.Next = &Block{Hash: h, Previous: block, Next: nil}
+	t := time.Now()
 
-	return h
+	newB.Index = b.Index + 1
+	newB.Timestamp = t.String()
+	newB.BPM = bpm
+	newB.Hash = calculateHash(newB)
+	newB.PreviousHash = b.Hash
+
+	return newB, nil
+
 }
 
-//Get retrieves a block from the chain
-func (l *Ledger) Get(h string) (*Block, error) {
-	if l.Genesis == nil {
-		return nil, errors.New("This chain is empty")
+// isValidBlock will check the block hasn't been tampered
+func isValidBlock(newB Block, prevB Block) bool {
+	if prevB.Index+1 != newB.Index {
+		return false
 	}
 
-	block := l.Genesis
-	hash := l.Genesis.Hash
-
-	for block != nil {
-		if hash == h {
-			return block, nil
-		}
-
-		block = block.Next
-		hash = block.Hash
+	if prevB.Hash != newB.PreviousHash {
+		return false
 	}
-	return nil, errors.New("Block not found")
+
+	if calculateHash(newB) != newB.Hash {
+		return false
+	}
+
+	return true
+}
+
+// ReplaceChain will compare the length of the chain.
+// when dealing with 2 blockchains usually the longest one gets picked
+func ReplaceChain(newB []Block) {
+	if len(newB) > len(Blockchain) {
+		Blockchain = newB
+	}
 }
